@@ -1,0 +1,13 @@
+{
+    "name": "AHC030",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "dev",
+    "workspaceFolder": "/workspace",
+    "shutdownAction": "stopCompose",
+    "extensions": [
+        "GitHub.copilot",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "rust-lang.rust-analyzer"
+    ]    
+}
