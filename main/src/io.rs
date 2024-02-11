@@ -5,6 +5,7 @@ use std::{io::BufRead, process::exit};
 pub struct IO<R: BufRead> {
     source: LineSource<R>,
     cost: f64,
+    excavate_history: Vec<((usize, usize), usize)>,
 }
 
 impl<R: BufRead> IO<R> {
@@ -13,7 +14,11 @@ impl<R: BufRead> IO<R> {
             from &mut source,
         }
 
-        Self { source, cost: 0.0 }
+        Self {
+            source,
+            cost: 0.0,
+            excavate_history: vec![],
+        }
     }
 
     pub fn init(&mut self) -> (usize, usize, f64, Vec<Vec<(usize, usize)>>) {
@@ -37,12 +42,20 @@ impl<R: BufRead> IO<R> {
     }
 
     pub fn excavate(&mut self, (x, y): (usize, usize)) -> usize {
+        if let Some(&(_, v)) = self
+            .excavate_history
+            .iter()
+            .find(|&&((hx, hy), _)| hx == x && hy == y)
+        {
+            return v;
+        }
         self.cost += 1.0;
         println!("q 1 {} {}", x, y);
         input! {
             from &mut self.source,
             res: usize,
         }
+        self.excavate_history.push(((x, y), res));
         res
     }
 
