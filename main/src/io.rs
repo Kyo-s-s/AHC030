@@ -89,7 +89,13 @@ impl<R: BufRead> IO<R> {
     }
 
     pub fn debug_color(&self, (x, y): (usize, usize), v: f64) {
-        let v = ((v * 255.0) as usize).min(255);
-        println!("#c {} {} #{:02x}{:02x}{:02x}", x, y, 255, 255 - v, 255 - v);
+        // let v = ((v * 255.0) as usize).min(255);
+        // println!("#c {} {} #{:02x}{:02x}{:02x}", x, y, 255, 255 - v, 255 - v);
+        if v < 1.0 {
+            let v = ((v * 255.0) as usize).min(255);
+            println!("#c {} {} #ff{:02x}{:02x}", x, y, 255 - v, 255 - v);
+        } else {
+            println!("#c {} {} #ff00ff", x, y);
+        }
     }
 }
