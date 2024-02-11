@@ -3,7 +3,7 @@ pub struct Probability {
     m: usize,
     e: f64,
     oilfields: Vec<Vec<(usize, usize)>>,
-    p: Vec<Vec<Vec<f64>>>,
+    pub p: Vec<Vec<Vec<f64>>>,
 }
 
 impl Probability {
@@ -26,16 +26,16 @@ impl Probability {
     }
 
     pub fn solved_check(&self) -> Option<Vec<(usize, usize)>> {
-        if self
-            .p
-            .iter()
-            .all(|p| p.iter().any(|p| p.iter().any(|&p| relative_eq(p, 1.0))))
-        {
+        let eps = 1e-6;
+        if self.p.iter().all(|p| {
+            p.iter()
+                .any(|p| p.iter().any(|&p| relative_eq_eps(p, 1.0, eps)))
+        }) {
             let mut r = vec![vec![false; self.n]; self.n];
             for (i, p) in self.p.iter().enumerate() {
                 for (dx, p) in p.iter().enumerate() {
                     for (dy, &p) in p.iter().enumerate() {
-                        if relative_eq(p, 1.0) {
+                        if relative_eq_eps(p, 1.0, eps) {
                             for &(x, y) in &self.oilfields[i] {
                                 r[x + dx][y + dy] = true;
                             }
@@ -137,8 +137,7 @@ impl Probability {
     }
 }
 
-fn relative_eq(a: f64, b: f64) -> bool {
-    let epsilon = 1e-6;
+fn relative_eq_eps(a: f64, b: f64, epsilon: f64) -> bool {
     // 0.0の場合は特別扱いする
     if a == 0.0 || b == 0.0 {
         return (a - b).abs() < epsilon;
@@ -149,6 +148,10 @@ fn relative_eq(a: f64, b: f64) -> bool {
 
     // 相対誤差がepsilon以下ならtrueを返す
     relative_difference < epsilon
+}
+
+fn relative_eq(a: f64, b: f64) -> bool {
+    relative_eq_eps(a, b, 1.0e-6)
 }
 
 #[cfg(test)]
