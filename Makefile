@@ -4,11 +4,11 @@ submit:
 
 run:
 	cd main && cargo build --release
-	python run.py 50
+	python run.py 10
 
 all:
 	cd main && cargo build --release
-	python run.py 100
+	python run.py 50
 
 test:
 	python bandle.py
