@@ -1,8 +1,10 @@
 // --- bandle on ---
-use crate::{io::*, probability::Probability};
+use crate::{io::*, probability::Probability, DEBUG};
 use std::io::BufRead;
 
 // --- bandle off ---
+
+use rand::seq::SliceRandom;
 
 pub struct Solver<R: BufRead> {
     n: usize,
@@ -31,27 +33,44 @@ impl<R: BufRead> Solver<R> {
 
     pub fn solve(&mut self) {
         self.print_expected();
+
+        let points = {
+            let mut points = (0..self.n)
+                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+                .collect::<Vec<_>>();
+            points.shuffle(&mut rand::thread_rng());
+            points
+        };
+
+        for &(x, y) in points.iter() {
+            let v = self.excavate((x, y));
+            self.probability.update_excavate((x, y), v);
+            // self.print_expected();
+            if let Some(ans) = self.probability.solved_check() {
+                self.io.submit(ans);
+            }
+        }
+
         self.honesty();
     }
 
     fn print_expected(&self) {
+        if !DEBUG {
+            return;
+        }
         let ev = self.probability.expected_value();
-        for x in 0..self.n {
-            for y in 0..self.n {
-                let v = ((ev[x][y] * 255.0) as usize).min(255);
-                println!("#c {} {} #{:02x}{:02x}{:02x}", x, y, 255, 255 - v, 255 - v);
+        for (x, ev) in ev.iter().enumerate() {
+            for (y, ev) in ev.iter().enumerate() {
+                self.io.debug_color((x, y), *ev);
             }
         }
     }
 
     fn honesty(&mut self) {
         let mut island = vec![vec![false; self.n]; self.n];
-        for x in 0..self.n {
-            for y in 0..self.n {
-                let v = self.excavate((x, y));
-                if v > 0 {
-                    island[x][y] = true;
-                }
+        for (x, island) in island.iter_mut().enumerate() {
+            for (y, island) in island.iter_mut().enumerate() {
+                *island = self.excavate((x, y)) > 0;
             }
         }
 

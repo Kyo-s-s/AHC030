@@ -87,4 +87,9 @@ impl<R: BufRead> IO<R> {
             println!("# submit failed! {} {}", d, ans);
         }
     }
+
+    pub fn debug_color(&self, (x, y): (usize, usize), v: f64) {
+        let v = ((v * 255.0) as usize).min(255);
+        println!("#c {} {} #{:02x}{:02x}{:02x}", x, y, 255, 255 - v, 255 - v);
+    }
 }
