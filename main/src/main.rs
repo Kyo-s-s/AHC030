@@ -8,8 +8,6 @@ use io::*;
 mod solver;
 use solver::*;
 
-// path: island.rs
-mod island;
 // --- bandle off ---
 
 fn main() {
