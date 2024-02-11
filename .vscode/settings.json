@@ -1,5 +1,6 @@
 {
   "hsnips.hsnipsPath": ".vscode",
   "editor.formatOnSave": true,
-  "rust-analyzer.linkedProjects": ["./main/Cargo.toml"]
+  "rust-analyzer.linkedProjects": ["./main/Cargo.toml"],
+  "rust-analyzer.check.command": "clippy",
 }
