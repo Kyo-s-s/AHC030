@@ -1,5 +1,5 @@
-// pub const DEBUG: bool = true;
-pub const DEBUG: bool = false;
+pub const DEBUG: bool = true;
+// pub const DEBUG: bool = false;
 
 // --- bandle on ---
 // path: io.rs

@@ -31,21 +31,39 @@ impl<R: BufRead> Solver<R> {
         self.io.excavate((x, y))
     }
 
+    fn next_excavate_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
+        let p = self.probability.expected_value();
+        let candidate = (0..self.n)
+            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+            .filter(|&(x, y)| !is_excavated[x][y])
+            .filter(|&(x, y)| p[x][y] < 1.0)
+            .map(|(x, y)| (p[x][y], (x, y)))
+            .collect::<Vec<_>>();
+
+        if let Some(&(_, (x, y))) = candidate
+            .iter()
+            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+        {
+            (x, y)
+        } else {
+            let points = (0..self.n)
+                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+                .filter(|&(x, y)| !is_excavated[x][y])
+                .collect::<Vec<_>>();
+            *points.choose(&mut rand::thread_rng()).unwrap()
+        }
+    }
+
     pub fn solve(&mut self) {
         self.print_expected();
+        let mut is_excavated = vec![vec![false; self.n]; self.n];
 
-        let points = {
-            let mut points = (0..self.n)
-                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-                .collect::<Vec<_>>();
-            points.shuffle(&mut rand::thread_rng());
-            points
-        };
-
-        for &(x, y) in points.iter() {
+        for _ in 0..(self.n * self.n) {
+            let (x, y) = self.next_excavate_pos(&is_excavated);
             let v = self.excavate((x, y));
             self.probability.update_excavate((x, y), v);
-            // self.print_expected();
+            is_excavated[x][y] = true;
+            self.print_expected();
             if let Some(ans) = self.probability.solved_check() {
                 self.io.submit(ans);
             }
