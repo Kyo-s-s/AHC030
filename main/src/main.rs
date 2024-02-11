@@ -8,6 +8,9 @@ use io::*;
 mod solver;
 use solver::*;
 
+// path: probability.rs
+mod probability;
+
 // --- bandle off ---
 
 fn main() {
