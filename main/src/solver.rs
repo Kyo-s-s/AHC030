@@ -1,8 +1,8 @@
 // --- bandle on ---
 use crate::io::*;
 use crate::island::*;
+use rand::seq::SliceRandom;
 use std::io::BufRead;
-
 // --- bandle off ---
 
 pub struct Solver<R: BufRead> {
@@ -37,8 +37,20 @@ impl<R: BufRead> Solver<R> {
     pub fn solve(&mut self) {
         for x in 0..self.n {
             for y in 0..self.n {
-                self.excavate((x, y));
+                self.island.disp((x, y));
             }
+        }
+
+        let points = {
+            let mut points = (0..self.n)
+                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+                .collect::<Vec<_>>();
+            points.shuffle(&mut rand::thread_rng());
+            points
+        };
+
+        for (x, y) in points {
+            self.excavate((x, y));
         }
 
         let ans = (0..self.n)
