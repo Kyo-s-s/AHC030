@@ -2,13 +2,18 @@ submit:
 	python bandle.py
 	cat bandle/src/main.rs | xclip -selection clipboard
 
-run:
+sm:
 	cd main && cargo build --release
 	python run.py 10
 
-all:
+run:
 	cd main && cargo build --release
 	python run.py 50
+
+all:
+	cd main && cargo build --release
+	python run.py 100
+
 
 test:
 	python bandle.py

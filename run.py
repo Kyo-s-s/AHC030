@@ -3,7 +3,7 @@ import multiprocessing
 import sys
 
 CASE = int(sys.argv[1])
-TL = 1000
+TL = 100
 
 def execute_case(seed):
     input_file_path = f'tools/in/{seed:04}.txt'
@@ -60,6 +60,13 @@ def main():
     print(f'max: {scores[-1]}')
     print(f'ave: {ave}')
     print(f'min: {scores[0]}')
+
+    print("==========================")
+    for i in range(9):
+        print(f'low  {i+1}: {scores[i]}')
+    print("==========================")
+    for i in range(9):
+        print(f'high {i+1}: {scores[-i-1]}')
 
 if __name__ == '__main__':
     main()
