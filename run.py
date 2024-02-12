@@ -14,8 +14,13 @@ def execute_case(seed):
             with open(pipefile, 'w') as p:
                 subprocess.run(['tools/target/release/tester', 'main/target/release/main'], stdin=fin, stdout=fout, stderr=p,timeout=TL)
             output = open(pipefile).read()
-    input_file = open(input_file_path).read()
     return seed, output
+
+def get_input_data(seed):
+    input_file_path = f'tools/in/{seed:04}.txt'
+    input_file = open(input_file_path).read()
+    N, M = [int(x) for x in input_file.split()[0 : 2]]
+    return N, M
 
 def progress(count):
     sys.stdout.write("\033[2K\033[G")
@@ -32,6 +37,8 @@ def main():
             progress(count)
             try:
                 score = int(score.split()[2])
+                N, _ = get_input_data(seed)
+                score /= N * N * 1000000 # ひらいたマス / 全マス
                 scores.append((score, f'{seed:04}'))
 
             except ValueError:
