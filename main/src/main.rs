@@ -1,7 +1,11 @@
-pub const DEBUG: bool = true;
-// pub const DEBUG: bool = false;
+// pub const DEBUG: bool = true;
+pub const DEBUG: bool = false;
 
 // --- bandle on ---
+// path: timer.rs
+mod timer;
+use timer::*;
+
 // path: io.rs
 mod io;
 use io::*;
@@ -16,9 +20,10 @@ mod probability;
 // --- bandle off ---
 
 fn main() {
+    let timer = Timer::new();
     let source = proconio::source::line::LineSource::new(std::io::stdin().lock());
     let mut io = IO::new(source);
     let (n, m, e, oilfields) = io.init();
-    let mut solver = Solver::new(io, n, m, e, oilfields);
+    let mut solver = Solver::new(timer, io, n, m, e, oilfields);
     solver.solve();
 }

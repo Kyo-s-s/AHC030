@@ -5,6 +5,7 @@ use std::{io::BufRead, process::exit};
 pub struct IO<R: BufRead> {
     source: LineSource<R>,
     cost: f64,
+    pub query_cnt: usize,
     excavate_history: Vec<((usize, usize), usize)>,
 }
 
@@ -17,6 +18,7 @@ impl<R: BufRead> IO<R> {
         Self {
             source,
             cost: 0.0,
+            query_cnt: 0,
             excavate_history: vec![],
         }
     }
@@ -50,6 +52,7 @@ impl<R: BufRead> IO<R> {
             return v;
         }
         self.cost += 1.0;
+        self.query_cnt += 1;
         println!("q 1 {} {}", x, y);
         input! {
             from &mut self.source,
@@ -62,6 +65,7 @@ impl<R: BufRead> IO<R> {
     pub fn predict(&mut self, s: Vec<(usize, usize)>) -> f64 {
         let d = s.len();
         self.cost += 1.0 / (d as f64).sqrt();
+        self.query_cnt += 1;
         let s = s.iter().map(|(x, y)| format!("{} {}", x, y)).join(" ");
         println!("q {} {}", d, s);
         input! {
@@ -73,6 +77,7 @@ impl<R: BufRead> IO<R> {
 
     pub fn submit(&mut self, ans: Vec<(usize, usize)>) {
         self.cost += 1.0;
+        self.query_cnt += 1;
         let d = ans.len();
         let ans = ans.iter().map(|(x, y)| format!("{} {}", x, y)).join(" ");
         println!("a {} {}", d, ans);

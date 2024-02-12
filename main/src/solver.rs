@@ -1,5 +1,5 @@
 // --- bandle on ---
-use crate::{io::*, probability::Probability, DEBUG};
+use crate::{io::*, probability::Probability, Timer, DEBUG, TL};
 use std::io::BufRead;
 
 // --- bandle off ---
@@ -7,6 +7,7 @@ use std::io::BufRead;
 use rand::seq::SliceRandom;
 
 pub struct Solver<R: BufRead> {
+    timer: Timer,
     n: usize,
     m: usize,
     e: f64,
@@ -16,8 +17,16 @@ pub struct Solver<R: BufRead> {
 }
 
 impl<R: BufRead> Solver<R> {
-    pub fn new(io: IO<R>, n: usize, m: usize, e: f64, oilfields: Vec<Vec<(usize, usize)>>) -> Self {
+    pub fn new(
+        timer: Timer,
+        io: IO<R>,
+        n: usize,
+        m: usize,
+        e: f64,
+        oilfields: Vec<Vec<(usize, usize)>>,
+    ) -> Self {
         Self {
+            timer,
             n,
             m,
             e,
@@ -35,14 +44,31 @@ impl<R: BufRead> Solver<R> {
         let p = self.probability.expected_value();
         let candidate = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-            .filter(|&(x, y)| !is_excavated[x][y])
-            .filter(|&(x, y)| p[x][y] < 1.0)
+            // .filter(|&(x, y)| !is_excavated[x][y])
+            // .filter(|&(x, y)| p[x][y] < 1.0)
+            // .filter(|&(x, y)| 0.001 < p[x][y])
             .map(|(x, y)| (p[x][y], (x, y)))
             .collect::<Vec<_>>();
 
         if let Some(&(_, (x, y))) = candidate
             .iter()
-            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+            .filter(|&(p, _)| 0.001 < *p && *p < 1.0)
+            .filter(|&(_, (x, y))| !is_excavated[*x][*y])
+            .min_by(|a, b| {
+                let a = (a.0 - 0.5).abs();
+                let b = (b.0 - 0.5).abs();
+                a.partial_cmp(&b).unwrap()
+            })
+        {
+            (x, y)
+        } else if let Some(&(_, (x, y))) = candidate
+            .iter()
+            .filter(|&(p, _)| 0.001 < *p && *p < 1.0)
+            .min_by(|a, b| {
+                let a = (a.0 - 0.5).abs();
+                let b = (b.0 - 0.5).abs();
+                a.partial_cmp(&b).unwrap()
+            })
         {
             (x, y)
         } else {
@@ -50,7 +76,7 @@ impl<R: BufRead> Solver<R> {
                 .flat_map(|i| (0..self.n).map(move |j| (i, j)))
                 .filter(|&(x, y)| !is_excavated[x][y])
                 .collect::<Vec<_>>();
-            *points.choose(&mut rand::thread_rng()).unwrap()
+            *points.choose(&mut rand::thread_rng()).unwrap_or(&(0, 0))
         }
     }
 
@@ -58,7 +84,7 @@ impl<R: BufRead> Solver<R> {
         self.print_expected();
         let mut is_excavated = vec![vec![false; self.n]; self.n];
 
-        for _ in 0..(self.n * self.n) {
+        while self.timer.get_time() < TL {
             let (x, y) = self.next_excavate_pos(&is_excavated);
             let v = self.excavate((x, y));
             self.probability.update_excavate((x, y), v);
@@ -89,6 +115,7 @@ impl<R: BufRead> Solver<R> {
         for (x, island) in island.iter_mut().enumerate() {
             for (y, island) in island.iter_mut().enumerate() {
                 *island = self.excavate((x, y)) > 0;
+                println!("# honesty");
             }
         }
 
