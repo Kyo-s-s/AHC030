@@ -7,6 +7,7 @@ pub struct IO<R: BufRead> {
     cost: f64,
     pub query_cnt: usize,
     excavate_history: Vec<((usize, usize), usize)>,
+    submit_history: Vec<Vec<(usize, usize)>>,
 }
 
 impl<R: BufRead> IO<R> {
@@ -20,6 +21,7 @@ impl<R: BufRead> IO<R> {
             cost: 0.0,
             query_cnt: 0,
             excavate_history: vec![],
+            submit_history: vec![],
         }
     }
 
@@ -76,8 +78,12 @@ impl<R: BufRead> IO<R> {
     }
 
     pub fn submit(&mut self, ans: Vec<(usize, usize)>) {
+        if self.submit_history.contains(&ans) {
+            return;
+        }
         self.cost += 1.0;
         self.query_cnt += 1;
+        self.submit_history.push(ans.clone());
         let d = ans.len();
         let ans = ans.iter().map(|(x, y)| format!("{} {}", x, y)).join(" ");
         println!("a {} {}", d, ans);
@@ -94,13 +100,13 @@ impl<R: BufRead> IO<R> {
     }
 
     pub fn debug_color(&self, (x, y): (usize, usize), v: f64) {
-        // let v = ((v * 255.0) as usize).min(255);
-        // println!("#c {} {} #{:02x}{:02x}{:02x}", x, y, 255, 255 - v, 255 - v);
+        let mut lines = vec![];
         if v < 1.0 {
             let v = ((v * 255.0) as usize).min(255);
-            println!("#c {} {} #ff{:02x}{:02x}", x, y, 255 - v, 255 - v);
+            lines.push(format!("#c {} {} #ff{:02x}{:02x}", x, y, 255 - v, 255 - v));
         } else {
-            println!("#c {} {} #ff00ff", x, y);
+            lines.push(format!("#c {} {} #ff00ff", x, y));
         }
+        println!("{}", lines.iter().join("\n"));
     }
 }

@@ -4,6 +4,7 @@ pub struct Probability {
     e: f64,
     oilfields: Vec<Vec<(usize, usize)>>,
     pub p: Vec<Vec<Vec<f64>>>,
+    excavate_history: Vec<((usize, usize), usize)>,
 }
 
 impl Probability {
@@ -22,6 +23,7 @@ impl Probability {
             e,
             oilfields: oilfields.clone(),
             p,
+            excavate_history: vec![],
         }
     }
 
@@ -55,6 +57,9 @@ impl Probability {
     }
 
     pub fn update_excavate(&mut self, (x, y): (usize, usize), v: usize) {
+        if !self.excavate_history.contains(&((x, y), v)) {
+            self.excavate_history.push(((x, y), v));
+        }
         // 各ピースについて、 (x, y) が 1 になる確率を求めておく
         let pick_p = (0..self.m)
             .map(|i| {
@@ -117,6 +122,19 @@ impl Probability {
                     self.p[i][dx][dy] /= sum;
                 }
             }
+        }
+    }
+
+    pub fn reupdate_excavate(&mut self) {
+        let p = self.expected_value();
+        let excavate_history = self.excavate_history.clone();
+        let reupdate = excavate_history
+            .iter()
+            .filter(|&&((x, y), v)| (p[x][y] - v as f64).abs() > 0.5)
+            .collect::<Vec<_>>();
+
+        for &((x, y), v) in &reupdate {
+            self.update_excavate((*x, *y), *v);
         }
     }
 

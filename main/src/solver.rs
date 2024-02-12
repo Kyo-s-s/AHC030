@@ -37,7 +37,10 @@ impl<R: BufRead> Solver<R> {
     }
 
     fn excavate(&mut self, (x, y): (usize, usize)) -> usize {
-        self.io.excavate((x, y))
+        let v = self.io.excavate((x, y));
+        self.probability.update_excavate((x, y), v);
+        self.probability.reupdate_excavate();
+        v
     }
 
     fn next_excavate_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
@@ -86,10 +89,11 @@ impl<R: BufRead> Solver<R> {
 
         while self.timer.get_time() < TL {
             let (x, y) = self.next_excavate_pos(&is_excavated);
-            let v = self.excavate((x, y));
-            self.probability.update_excavate((x, y), v);
+            self.excavate((x, y));
+            if !is_excavated[x][y] {
+                self.print_expected();
+            }
             is_excavated[x][y] = true;
-            self.print_expected();
             if let Some(ans) = self.probability.solved_check() {
                 self.io.submit(ans);
             }
@@ -115,6 +119,7 @@ impl<R: BufRead> Solver<R> {
         for (x, island) in island.iter_mut().enumerate() {
             for (y, island) in island.iter_mut().enumerate() {
                 *island = self.excavate((x, y)) > 0;
+                // FIXME: IO
                 println!("# honesty");
             }
         }
