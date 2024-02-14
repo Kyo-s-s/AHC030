@@ -28,21 +28,42 @@ impl Probability {
     }
 
     pub fn solved_check(&self) -> Option<Vec<(usize, usize)>> {
-        let eps = 1e-6;
-        if self.p.iter().all(|p| {
+        // TODO: こうなるって言うことはぶっ壊れている -> honesty になってしまうため、
+        // 推測をランダムにやり直すなどの処理を入れるべきかも？ case 36 で起きていそう
+        if self.p.iter().any(|p| {
             p.iter()
-                .any(|p| p.iter().any(|&p| relative_eq_eps(p, 1.0, eps)))
+                .any(|p| p.iter().any(|&p| !(0.0..=1.0).contains(&p)))
         }) {
+            return None;
+        }
+
+        let ac_per = self
+            .p
+            .iter()
+            .map(|p| {
+                p.iter()
+                    .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+                    .collect::<Vec<_>>()
+            })
+            .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+            .fold(1.0, |acc, x| acc * x);
+
+        if ac_per > 0.95 {
             let mut r = vec![vec![false; self.n]; self.n];
             for (i, p) in self.p.iter().enumerate() {
-                for (dx, p) in p.iter().enumerate() {
-                    for (dy, &p) in p.iter().enumerate() {
-                        if relative_eq_eps(p, 1.0, eps) {
-                            for &(x, y) in &self.oilfields[i] {
-                                r[x + dx][y + dy] = true;
-                            }
-                        }
-                    }
+                let (dx, (dy, _)) = p
+                    .iter()
+                    .map(|p| {
+                        p.iter()
+                            .enumerate()
+                            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                            .unwrap()
+                    })
+                    .enumerate()
+                    .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap();
+                for &(x, y) in &self.oilfields[i] {
+                    r[x + dx][y + dy] = true;
                 }
             }
             Some(
@@ -122,19 +143,6 @@ impl Probability {
                     self.p[i][dx][dy] /= sum;
                 }
             }
-        }
-    }
-
-    pub fn reupdate_excavate(&mut self) {
-        let p = self.expected_value();
-        let excavate_history = self.excavate_history.clone();
-        let reupdate = excavate_history
-            .iter()
-            .filter(|&&((x, y), v)| (p[x][y] - v as f64).abs() > 0.5)
-            .collect::<Vec<_>>();
-
-        for &((x, y), v) in &reupdate {
-            self.update_excavate((*x, *y), *v);
         }
     }
 
