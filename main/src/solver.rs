@@ -42,6 +42,12 @@ impl<R: BufRead> Solver<R> {
         v
     }
 
+    fn submit(&mut self, ans: Vec<(usize, usize)>) {
+        self.io.submit(ans);
+        // submit falled
+        self.probability.update_submit_failed();
+    }
+
     fn next_excavate_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
         let p = self.probability.expected_value();
         let candidate = (0..self.n)
@@ -54,7 +60,7 @@ impl<R: BufRead> Solver<R> {
 
         if let Some(&(_, (x, y))) = candidate
             .iter()
-            .filter(|&(p, _)| 0.001 < *p && *p < 1.0)
+            .filter(|&(p, _)| 0.25 < *p && *p < 0.75)
             .filter(|&(_, (x, y))| !is_excavated[*x][*y])
             .min_by(|a, b| {
                 let a = (a.0 - 0.5).abs();
@@ -65,7 +71,7 @@ impl<R: BufRead> Solver<R> {
             (x, y)
         } else if let Some(&(_, (x, y))) = candidate
             .iter()
-            .filter(|&(p, _)| 0.001 < *p && *p < 1.0)
+            .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
             .min_by(|a, b| {
                 let a = (a.0 - 0.5).abs();
                 let b = (b.0 - 0.5).abs();
@@ -94,7 +100,7 @@ impl<R: BufRead> Solver<R> {
             }
             is_excavated[x][y] = true;
             if let Some(ans) = self.probability.solved_check() {
-                self.io.submit(ans);
+                self.submit(ans);
             }
         }
 

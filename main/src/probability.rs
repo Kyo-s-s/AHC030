@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+
 pub struct Probability {
     n: usize,
     m: usize,
@@ -27,14 +29,31 @@ impl Probability {
         }
     }
 
-    pub fn solved_check(&self) -> Option<Vec<(usize, usize)>> {
-        // TODO: こうなるって言うことはぶっ壊れている -> honesty になってしまうため、
-        // 推測をランダムにやり直すなどの処理を入れるべきかも？ case 36 で起きていそう
+    pub fn reset(&mut self) {
+        self.p = (0..self.m)
+            .map(|i| {
+                let (mx, my) = self.oilfields[i]
+                    .iter()
+                    .fold((0, 0), |(mx, my), &(x, y)| (mx.max(x), my.max(y)));
+                vec![
+                    vec![1.0 / ((self.n - mx) as f64 * (self.n - my) as f64); self.n - my];
+                    self.n - mx
+                ]
+            })
+            .collect::<Vec<_>>();
+        let mut excavate_history = self.excavate_history.clone();
+        excavate_history.shuffle(&mut rand::thread_rng());
+        for ((x, y), v) in excavate_history {
+            self.update_excavate((x, y), v);
+        }
+    }
+
+    pub fn solved_check(&mut self) -> Option<Vec<(usize, usize)>> {
         if self.p.iter().any(|p| {
             p.iter()
                 .any(|p| p.iter().any(|&p| !(0.0..=1.0).contains(&p)))
         }) {
-            return None;
+            self.reset();
         }
 
         let ac_per = self
@@ -130,6 +149,28 @@ impl Probability {
                     }
                 }
             }
+        }
+        self.normalize();
+    }
+
+    pub fn update_predict(&mut self, s: Vec<(usize, usize)>, v: f64) {
+        todo!()
+    }
+
+    pub fn update_submit_failed(&mut self) {
+        for p in self.p.iter_mut() {
+            let (dx, (dy, _)) = p
+                .iter()
+                .map(|p| {
+                    p.iter()
+                        .enumerate()
+                        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                        .unwrap()
+                })
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
+                .unwrap();
+            p[dx][dy] *= 0.2; // 失敗したので確率を落とす 100%これなら正規化で元に戻るので問題なし
         }
         self.normalize();
     }
