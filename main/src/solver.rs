@@ -39,7 +39,6 @@ impl<R: BufRead> Solver<R> {
     fn excavate(&mut self, (x, y): (usize, usize)) -> usize {
         let v = self.io.excavate((x, y));
         self.probability.update_excavate((x, y), v);
-        self.probability.reupdate_excavate();
         v
     }
 
