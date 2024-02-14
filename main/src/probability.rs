@@ -67,8 +67,8 @@ impl Probability {
             .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
             .fold(1.0, |acc, x| acc * x);
 
-        if ac_per > 0.95 {
-            let mut r = vec![vec![false; self.n]; self.n];
+        if ac_per > (0.8_f64).powf(self.m as f64) {
+            let mut r = vec![vec![0; self.n]; self.n];
             for (i, p) in self.p.iter().enumerate() {
                 let (dx, (dy, _)) = p
                     .iter()
@@ -82,13 +82,22 @@ impl Probability {
                     .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
                     .unwrap();
                 for &(x, y) in &self.oilfields[i] {
-                    r[x + dx][y + dy] = true;
+                    r[x + dx][y + dy] += 1;
                 }
+            }
+            // excavate_history check
+            if self
+                .excavate_history
+                .iter()
+                .any(|((x, y), v)| r[*x][*y] != *v)
+            {
+                self.update_submit_failed();
+                return None;
             }
             Some(
                 (0..self.n)
                     .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-                    .filter(|&(i, j)| r[i][j])
+                    .filter(|&(i, j)| r[i][j] > 0)
                     .collect::<Vec<_>>(),
             )
         } else {
@@ -170,7 +179,7 @@ impl Probability {
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
                 .unwrap();
-            p[dx][dy] *= 0.2; // 失敗したので確率を落とす 100%これなら正規化で元に戻るので問題なし
+            p[dx][dy] *= 0.05; // 失敗したので確率を落とす 100%これなら正規化で元に戻るので問題なし
         }
         self.normalize();
     }
