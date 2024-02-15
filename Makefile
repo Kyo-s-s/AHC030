@@ -12,7 +12,7 @@ run:
 
 all:
 	cd main && cargo build --release
-	python run.py 100
+	python run.py 500
 
 
 test:
