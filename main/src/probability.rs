@@ -11,6 +11,7 @@ pub struct Probability {
     oilfields: Vec<Vec<(usize, usize)>>,
     pub p: Vec<Vec<Vec<f64>>>,
     excavate_history: Vec<((usize, usize), usize)>,
+    predict_history: Vec<(Vec<(usize, usize)>, f64)>,
 }
 
 impl Probability {
@@ -30,6 +31,7 @@ impl Probability {
             oilfields: oilfields.clone(),
             p,
             excavate_history: vec![],
+            predict_history: vec![],
         }
     }
 
@@ -50,6 +52,11 @@ impl Probability {
         excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
         for ((x, y), v) in excavate_history {
             self.update_excavate((x, y), v);
+        }
+        let mut predict_history = self.predict_history.clone();
+        predict_history.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        for (s, v) in predict_history {
+            self.update_predict(&s, v);
         }
     }
 
@@ -191,10 +198,9 @@ impl Probability {
         a * (-b).exp()
     }
 
-    // 推測が面倒なので、殆ど 0 のやつについてpredictし、やる
-    pub fn update_predict(&mut self, s: Vec<(usize, usize)>, v: f64) {
-        let k = s.len() as f64;
-        let per = (0..(s.len() + 1))
+    pub fn update_predict(&mut self, set: &Vec<(usize, usize)>, v: f64) {
+        let k = set.len() as f64;
+        let per = (0..(2 * set.len()))
             .map(|vs| {
                 let mu = (k - vs as f64) * self.e + vs as f64 * (1. - self.e);
                 let sig2 = k * self.e * (1. - self.e);
@@ -202,24 +208,21 @@ impl Probability {
             })
             .collect::<Vec<_>>();
 
-        let num = per
-            .iter()
-            .enumerate()
-            .map(|(i, p)| p * i as f64)
-            .sum::<f64>();
-        let sum = per.iter().sum::<f64>();
+        let s = per.iter().sum::<f64>();
 
-        // s の中の油田量総和の期待値...？
-        // update
-        let nk = num / sum;
         for (i, p) in self.p.iter_mut().enumerate() {
-            for dx in 0..(p.len()) {
-                for dy in 0..(p[dx].len()) {
-                    let mut res = 0.0;
-                    for (j, &(x, y)) in s.iter().enumerate() {
-                        todo!();
-                    }
-                    todo!();
+            for (dx, p) in p.iter_mut().enumerate() {
+                for (dy, p) in p.iter_mut().enumerate() {
+                    let dub = set
+                        .iter()
+                        .filter(|&&(x, y)| {
+                            self.oilfields[i]
+                                .iter()
+                                .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
+                        })
+                        .count();
+                    let u = (1. - (per[0] / s)).powf(dub as f64);
+                    *p *= u;
                 }
             }
         }

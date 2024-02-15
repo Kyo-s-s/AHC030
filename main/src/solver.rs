@@ -4,6 +4,11 @@ use rand::seq::SliceRandom;
 use std::io::BufRead;
 // --- bandle off ---
 
+enum Query {
+    Excavate((usize, usize)),
+    Predict(Vec<(usize, usize)>),
+}
+
 pub struct Solver<R: BufRead> {
     timer: Timer,
     n: usize,
@@ -46,45 +51,44 @@ impl<R: BufRead> Solver<R> {
         self.probability.update_submit_failed();
     }
 
-    fn next_excavate_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
-        let p = self.probability.expected_value();
-        let candidate = (0..self.n)
-            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-            // .filter(|&(x, y)| !is_excavated[x][y])
-            // .filter(|&(x, y)| p[x][y] < 1.0)
-            // .filter(|&(x, y)| 0.001 < p[x][y])
-            .map(|(x, y)| (p[x][y], (x, y)))
-            .collect::<Vec<_>>();
+    fn next_query(&self, is_excavated: &[Vec<bool>]) -> Query {
+        if let Some(pair) =
+            self.next_excavate_good_pos(is_excavated, &self.probability.expected_value())
+        {
+            return Query::Excavate(pair);
+        }
+        Query::Excavate(self.next_random_pos(is_excavated))
+    }
 
-        if let Some(&(_, (x, y))) = candidate
-            .iter()
-            // .filter(|&(p, _)| 0.25 < *p && *p < 0.75)
-            .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
-            .filter(|&(_, (x, y))| !is_excavated[*x][*y])
+    fn next_excavate_good_pos(
+        &self,
+        is_excavated: &[Vec<bool>],
+        p: &[Vec<f64>],
+    ) -> Option<(usize, usize)> {
+        if let Some((_, (x, y))) = (0..self.n)
+            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+            .map(|(x, y)| (p[x][y], (x, y)))
+            .filter(|&(_, (x, y))| !is_excavated[x][y])
+            // これなに？謎
+            .filter(|&(p, _)| 0.01 < p && p < 0.99)
             .min_by(|a, b| {
                 let a = (a.0 - 0.5).abs();
                 let b = (b.0 - 0.5).abs();
                 a.partial_cmp(&b).unwrap()
             })
         {
-            (x, y)
-        // } else if let Some(&(_, (x, y))) = candidate
-        //     .iter()
-        //     .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
-        //     .min_by(|a, b| {
-        //         let a = (a.0 - 0.5).abs();
-        //         let b = (b.0 - 0.5).abs();
-        //         a.partial_cmp(&b).unwrap()
-        //     })
-        // {
-        //     (x, y)
+            Some((x, y))
         } else {
-            let points = (0..self.n)
-                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-                .filter(|&(x, y)| !is_excavated[x][y])
-                .collect::<Vec<_>>();
-            *points.choose(&mut rand::thread_rng()).unwrap_or(&(0, 0))
+            None
         }
+    }
+
+    fn next_random_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
+        let points = (0..self.n)
+            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+            .filter(|&(x, y)| !is_excavated[x][y])
+            .collect::<Vec<_>>();
+        *points.choose(&mut rand::thread_rng()).unwrap_or(&(0, 0))
     }
 
     pub fn solve(&mut self) {
@@ -92,12 +96,20 @@ impl<R: BufRead> Solver<R> {
         let mut is_excavated = vec![vec![false; self.n]; self.n];
 
         while self.timer.get_time() < TL {
-            let (x, y) = self.next_excavate_pos(&is_excavated);
-            self.excavate((x, y));
-            if !is_excavated[x][y] {
-                self.print_expected();
-                is_excavated[x][y] = true;
+            let query = self.next_query(&is_excavated);
+            match query {
+                Query::Excavate((x, y)) => {
+                    self.excavate((x, y));
+                    if !is_excavated[x][y] {
+                        self.print_expected();
+                        is_excavated[x][y] = true;
+                    }
+                }
+                Query::Predict(set) => {
+                    self.io.predict(set);
+                }
             }
+
             if let Some(ans) = self.probability.solved_check(&self.io) {
                 self.submit(ans);
             }
