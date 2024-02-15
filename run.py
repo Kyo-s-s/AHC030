@@ -3,7 +3,7 @@ import multiprocessing
 import sys
 
 CASE = int(sys.argv[1])
-TL = 100
+TL = 600
 
 def execute_case(seed):
     input_file_path = f'tools/in/{seed:04}.txt'

@@ -1,10 +1,8 @@
 // --- bandle on ---
 use crate::{io::*, probability::Probability, Timer, DEBUG, TL};
-use std::io::BufRead;
-
-// --- bandle off ---
-
 use rand::seq::SliceRandom;
+use std::io::BufRead;
+// --- bandle off ---
 
 pub struct Solver<R: BufRead> {
     timer: Timer,
