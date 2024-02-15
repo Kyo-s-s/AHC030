@@ -60,7 +60,8 @@ impl<R: BufRead> Solver<R> {
 
         if let Some(&(_, (x, y))) = candidate
             .iter()
-            .filter(|&(p, _)| 0.25 < *p && *p < 0.75)
+            // .filter(|&(p, _)| 0.25 < *p && *p < 0.75)
+            .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
             .filter(|&(_, (x, y))| !is_excavated[*x][*y])
             .min_by(|a, b| {
                 let a = (a.0 - 0.5).abs();
@@ -69,16 +70,16 @@ impl<R: BufRead> Solver<R> {
             })
         {
             (x, y)
-        } else if let Some(&(_, (x, y))) = candidate
-            .iter()
-            .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
-            .min_by(|a, b| {
-                let a = (a.0 - 0.5).abs();
-                let b = (b.0 - 0.5).abs();
-                a.partial_cmp(&b).unwrap()
-            })
-        {
-            (x, y)
+        // } else if let Some(&(_, (x, y))) = candidate
+        //     .iter()
+        //     .filter(|&(p, _)| 0.01 < *p && *p < 0.99)
+        //     .min_by(|a, b| {
+        //         let a = (a.0 - 0.5).abs();
+        //         let b = (b.0 - 0.5).abs();
+        //         a.partial_cmp(&b).unwrap()
+        //     })
+        // {
+        //     (x, y)
         } else {
             let points = (0..self.n)
                 .flat_map(|i| (0..self.n).map(move |j| (i, j)))
@@ -97,9 +98,9 @@ impl<R: BufRead> Solver<R> {
             self.excavate((x, y));
             if !is_excavated[x][y] {
                 self.print_expected();
+                is_excavated[x][y] = true;
             }
-            is_excavated[x][y] = true;
-            if let Some(ans) = self.probability.solved_check() {
+            if let Some(ans) = self.probability.solved_check(&self.io) {
                 self.submit(ans);
             }
         }
@@ -124,8 +125,7 @@ impl<R: BufRead> Solver<R> {
         for (x, island) in island.iter_mut().enumerate() {
             for (y, island) in island.iter_mut().enumerate() {
                 *island = self.excavate((x, y)) > 0;
-                // FIXME: IO
-                println!("# honesty");
+                self.io.debug(DEBUG, "honesty");
             }
         }
 

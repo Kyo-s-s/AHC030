@@ -94,9 +94,15 @@ impl<R: BufRead> IO<R> {
         if res == 1 {
             println!("# submit success! cost: {}", self.cost);
             exit(0);
-        } else {
-            println!("# submit failed! {} {}", d, ans);
         }
+        println!("# submit failed! {} {}", d, ans);
+    }
+
+    pub fn debug(&self, disp: bool, line: &str) {
+        if !disp {
+            return;
+        }
+        println!("# {}", line);
     }
 
     pub fn debug_color(&self, (x, y): (usize, usize), v: f64) {

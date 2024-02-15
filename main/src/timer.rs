@@ -1,6 +1,8 @@
-use std::time::SystemTime;
-
+// --- bandle on ---
 use crate::DEBUG;
+// --- bandle off ---
+
+use std::time::SystemTime;
 
 pub struct Timer {
     start: SystemTime,
@@ -21,4 +23,4 @@ impl Timer {
     }
 }
 
-pub const TL: f64 = if DEBUG { 60.0 } else { 2.8 };
+pub const TL: f64 = if DEBUG { 360.0 } else { 2.8 };

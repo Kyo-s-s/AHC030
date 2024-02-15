@@ -1,3 +1,7 @@
+// --- bandle on ---
+use crate::IO;
+// --- bandle off ---
+
 use rand::seq::SliceRandom;
 
 pub struct Probability {
@@ -42,18 +46,28 @@ impl Probability {
             })
             .collect::<Vec<_>>();
         let mut excavate_history = self.excavate_history.clone();
-        excavate_history.shuffle(&mut rand::thread_rng());
+        // excavate_history.shuffle(&mut rand::thread_rng());
+        excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
         for ((x, y), v) in excavate_history {
             self.update_excavate((x, y), v);
         }
     }
 
-    pub fn solved_check(&mut self) -> Option<Vec<(usize, usize)>> {
-        if self.p.iter().any(|p| {
+    fn invalid(&self) -> bool {
+        self.p.iter().any(|p| {
             p.iter()
                 .any(|p| p.iter().any(|&p| !(0.0..=1.0).contains(&p)))
-        }) {
+        })
+    }
+
+    pub fn solved_check<R: std::io::BufRead>(&mut self, io: &IO<R>) -> Option<Vec<(usize, usize)>> {
+        if self.invalid() {
             self.reset();
+        }
+
+        // reset 後がもうinvalidなケースがあるらしい
+        if self.invalid() {
+            return None;
         }
 
         let ac_per = self
@@ -67,7 +81,9 @@ impl Probability {
             .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
             .fold(1.0, |acc, x| acc * x);
 
-        if ac_per > (0.8_f64).powf(self.m as f64) {
+        io.debug(true, &format!("ac_per: {}", ac_per));
+
+        if ac_per > (0.5_f64).powf(self.m as f64) {
             let mut r = vec![vec![0; self.n]; self.n];
             for (i, p) in self.p.iter().enumerate() {
                 let (dx, (dy, _)) = p
@@ -91,7 +107,8 @@ impl Probability {
                 .iter()
                 .any(|((x, y), v)| r[*x][*y] != *v)
             {
-                self.update_submit_failed();
+                // self.update_submit_failed();
+                self.reset();
                 return None;
             }
             Some(
@@ -146,15 +163,21 @@ impl Probability {
                 }
                 dp
             };
+            let (a, b) = {
+                let a = if v == 0 { 0.0 } else { dp[v - 1] };
+                let b = dp[v];
+                let su = a + b;
+                (a / su, b / su)
+            };
             for dx in 0..(self.p[i].len()) {
                 for dy in 0..(self.p[i][dx].len()) {
                     if self.oilfields[i]
                         .iter()
                         .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                     {
-                        self.p[i][dx][dy] *= if v == 0 { 0.0 } else { dp[v - 1] };
+                        self.p[i][dx][dy] *= a;
                     } else {
-                        self.p[i][dx][dy] *= dp[v];
+                        self.p[i][dx][dy] *= b;
                     }
                 }
             }
@@ -162,8 +185,45 @@ impl Probability {
         self.normalize();
     }
 
+    fn normal_distribution(mu: f64, sig2: f64, x: f64) -> f64 {
+        let a = 1. / (2. * std::f64::consts::PI * sig2).sqrt();
+        let b = (x - mu).powi(2) / (2. * sig2);
+        a * (-b).exp()
+    }
+
+    // 推測が面倒なので、殆ど 0 のやつについてpredictし、やる
     pub fn update_predict(&mut self, s: Vec<(usize, usize)>, v: f64) {
-        todo!()
+        let k = s.len() as f64;
+        let per = (0..(s.len() + 1))
+            .map(|vs| {
+                let mu = (k - vs as f64) * self.e + vs as f64 * (1. - self.e);
+                let sig2 = k * self.e * (1. - self.e);
+                Probability::normal_distribution(mu, sig2, v)
+            })
+            .collect::<Vec<_>>();
+
+        let num = per
+            .iter()
+            .enumerate()
+            .map(|(i, p)| p * i as f64)
+            .sum::<f64>();
+        let sum = per.iter().sum::<f64>();
+
+        // s の中の油田量総和の期待値...？
+        // update
+        let nk = num / sum;
+        for (i, p) in self.p.iter_mut().enumerate() {
+            for dx in 0..(p.len()) {
+                for dy in 0..(p[dx].len()) {
+                    let mut res = 0.0;
+                    for (j, &(x, y)) in s.iter().enumerate() {
+                        todo!();
+                    }
+                    todo!();
+                }
+            }
+        }
+        self.normalize();
     }
 
     pub fn update_submit_failed(&mut self) {
