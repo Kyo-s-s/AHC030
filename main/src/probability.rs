@@ -6,17 +6,18 @@ pub struct Probability {
     n: usize,
     m: usize,
     e: f64,
-    oilfields: Vec<Vec<(usize, usize)>>,
+    oilfields: Vec<(usize, Vec<(usize, usize)>)>,
     pub p: Vec<Vec<Vec<f64>>>,
     excavate_history: Vec<((usize, usize), usize)>,
     predict_history: Vec<(Vec<(usize, usize)>, f64)>,
 }
 
 impl Probability {
-    pub fn new(n: usize, m: usize, e: f64, oilfields: Vec<Vec<(usize, usize)>>) -> Self {
-        let p = (0..m)
+    pub fn new(n: usize, m: usize, e: f64, oilfields: Vec<(usize, Vec<(usize, usize)>)>) -> Self {
+        let p = (0..(oilfields.len()))
             .map(|i| {
                 let (mx, my) = oilfields[i]
+                    .1
                     .iter()
                     .fold((0, 0), |(mx, my), &(x, y)| (mx.max(x), my.max(y)));
                 vec![vec![1.0 / ((n - mx) as f64 * (n - my) as f64); n - my]; n - mx]
@@ -34,9 +35,10 @@ impl Probability {
     }
 
     pub fn reset(&mut self) {
-        self.p = (0..self.m)
+        self.p = (0..self.oilfields.len())
             .map(|i| {
                 let (mx, my) = self.oilfields[i]
+                    .1
                     .iter()
                     .fold((0, 0), |(mx, my), &(x, y)| (mx.max(x), my.max(y)));
                 vec![
@@ -74,35 +76,52 @@ impl Probability {
             return None;
         }
 
-        let ac_per = self
-            .p
-            .iter()
-            .map(|p| {
+        // ここ ダブりの計算をちゃんとしていない
+        let ac_per = (0..self.p.len())
+            .map(|i| {
+                let mut p = self.p[i].iter().flatten().collect::<Vec<_>>();
+                p.sort_by(|a, b| b.partial_cmp(a).unwrap());
                 p.iter()
-                    .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
-                    .collect::<Vec<_>>()
+                    .take(self.oilfields[i].0)
+                    .map(|p| self.oilfields[i].0 as f64 * **p)
+                    .map(|p| p.min(1.))
+                    .fold(1.0, |acc, x| acc * x)
             })
-            .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
             .fold(1.0, |acc, x| acc * x);
+        // let ac_per = self
+        //     .p
+        //     .iter()
+        //     .map(|p| {
+        //         p.iter()
+        //             .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+        //             .collect::<Vec<_>>()
+        //     })
+        //     .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+        //     .fold(1.0, |acc, x| acc * x);
 
         io.debug(true, &format!("ac_per: {}", ac_per));
 
         if ac_per > (0.5_f64).powf(self.m as f64) {
             let mut r = vec![vec![0; self.n]; self.n];
             for (i, p) in self.p.iter().enumerate() {
-                let (dx, (dy, _)) = p
-                    .iter()
-                    .map(|p| {
-                        p.iter()
-                            .enumerate()
-                            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                            .unwrap()
-                    })
-                    .enumerate()
-                    .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
-                    .unwrap();
-                for &(x, y) in &self.oilfields[i] {
-                    r[x + dx][y + dy] += 1;
+                let sorted = {
+                    let mut res = p
+                        .iter()
+                        .map(|p| {
+                            p.iter()
+                                .enumerate()
+                                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                                .unwrap()
+                        })
+                        .enumerate()
+                        .collect::<Vec<_>>();
+                    res.sort_by(|a, b| b.1 .1.partial_cmp(a.1 .1).unwrap());
+                    res
+                };
+                for (dx, (dy, _)) in sorted.iter().take(self.oilfields[i].0) {
+                    for &(x, y) in &self.oilfields[i].1 {
+                        r[x + dx][y + dy] += 1;
+                    }
                 }
             }
             // excavate_history check
@@ -132,13 +151,14 @@ impl Probability {
             self.excavate_history.push(((x, y), v));
         }
         // 各ピースについて、 (x, y) が 1 になる確率を求めておく
-        let pick_p = (0..self.m)
+        // 同じ形のピースのときに壊れる
+        let pick_p = (0..self.p.len())
             .map(|i| {
                 let mut res = 0.0;
                 for dx in 0..(self.p[i].len()) {
                     for dy in 0..(self.p[i][dx].len()) {
-                        // if self.oilfields[i].contains(&(x - dx, y - dy)) {
                         if self.oilfields[i]
+                            .1
                             .iter()
                             .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                         {
@@ -146,11 +166,11 @@ impl Probability {
                         }
                     }
                 }
-                res
+                res.powf(self.oilfields[i].0 as f64)
             })
             .collect::<Vec<_>>();
 
-        for i in 0..self.m {
+        for i in 0..self.p.len() {
             // dp[k] := ピース i 以外のピースを使って、合計 k になる確率
             let dp = {
                 let mut dp = vec![0.0; v + 2];
@@ -174,9 +194,11 @@ impl Probability {
                 let su = a + b;
                 (a / su, b / su)
             };
+            // FIXME!! 個数が2以上の時、この更新じゃダメそう ちゃんとやる必要がある
             for dx in 0..(self.p[i].len()) {
                 for dy in 0..(self.p[i][dx].len()) {
                     if self.oilfields[i]
+                        .1
                         .iter()
                         .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                     {
@@ -212,10 +234,12 @@ impl Probability {
             for (dx, p) in p.iter_mut().enumerate() {
                 for (dy, p) in p.iter_mut().enumerate() {
                     // P(i, dx, dy) が正当である確率 -> (i, dx, dy) でset上に置かれる個数以上になる確率
+                    // FIXME!! 個数が2以上の時、この更新じゃダメそう ちゃんとやる必要がある
                     let dub = set
                         .iter()
                         .filter(|&&(x, y)| {
                             self.oilfields[i]
+                                .1
                                 .iter()
                                 .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                         })
@@ -249,7 +273,7 @@ impl Probability {
 
     // 正規化 各ピース i について、p[i] の合計が 1 になるようにする
     fn normalize(&mut self) {
-        for i in 0..self.m {
+        for i in 0..self.p.len() {
             let sum = self.p[i].iter().map(|v| v.iter().sum::<f64>()).sum::<f64>();
             for dx in 0..(self.p[i].len()) {
                 for dy in 0..(self.p[i][dx].len()) {
@@ -262,12 +286,14 @@ impl Probability {
     // セル (i, j) の油田量の期待値
     pub fn expected_value(&self) -> Vec<Vec<f64>> {
         let mut ev = vec![vec![0.0; self.n]; self.n];
-        for (i, oilfield) in self.oilfields.iter().enumerate() {
-            for dx in 0..(self.p[i].len()) {
-                for dy in 0..(self.p[i][dx].len()) {
-                    let p = self.p[i][dx][dy];
-                    for &(x, y) in oilfield {
-                        ev[x + dx][y + dy] += p;
+        for (i, (count, oilfield)) in self.oilfields.iter().enumerate() {
+            if *count == 1 {
+                for dx in 0..(self.p[i].len()) {
+                    for dy in 0..(self.p[i][dx].len()) {
+                        let p = self.p[i][dx][dy];
+                        for &(x, y) in oilfield {
+                            ev[x + dx][y + dy] += p * *count as f64;
+                        }
                     }
                 }
             }
@@ -309,8 +335,8 @@ mod tests {
         //   .#.
 
         let oilfields = vec![
-            vec![(0, 1), (1, 0), (1, 1), (1, 2), (2, 1)],
-            vec![(1, 0), (1, 1), (1, 2), (1, 3), (0, 2)],
+            (1, vec![(0, 1), (1, 0), (1, 1), (1, 2), (2, 1)]),
+            (1, vec![(1, 0), (1, 1), (1, 2), (1, 3), (0, 2)]),
         ];
         let mut probability = Probability::new(n, m, e, oilfields);
         assert_eq!(

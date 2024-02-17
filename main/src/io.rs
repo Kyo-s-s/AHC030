@@ -25,23 +25,30 @@ impl<R: BufRead> IO<R> {
         }
     }
 
-    pub fn init(&mut self) -> (usize, usize, f64, Vec<Vec<(usize, usize)>>) {
+    pub fn init(&mut self) -> (usize, usize, f64, Vec<(usize, Vec<(usize, usize)>)>) {
         input! {
             from &mut self.source,
             n: usize,
             m: usize,
             e: f64,
         }
-        let oilfields = (0..m)
-            .map(|_| {
+
+        let oilfields = {
+            let mut oilfields = vec![];
+            for _ in 0..m {
                 input! {
                     from &mut self.source,
                     d: usize,
                     oilfield: [(usize, usize); d],
                 }
-                oilfield
-            })
-            .collect::<Vec<_>>();
+                if let Some((idx, _)) = oilfields.iter_mut().find(|(_, v)| v == &oilfield) {
+                    *idx += 1;
+                } else {
+                    oilfields.push((1, oilfield));
+                }
+            }
+            oilfields
+        };
         (n, m, e, oilfields)
     }
 

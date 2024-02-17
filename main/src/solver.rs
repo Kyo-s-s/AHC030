@@ -13,7 +13,7 @@ pub struct Solver<R: BufRead> {
     n: usize,
     m: usize,
     e: f64,
-    oilfields: Vec<Vec<(usize, usize)>>,
+    oilfields: Vec<(usize, Vec<(usize, usize)>)>,
     io: IO<R>,
     probability: Probability,
 }
@@ -25,7 +25,7 @@ impl<R: BufRead> Solver<R> {
         n: usize,
         m: usize,
         e: f64,
-        oilfields: Vec<Vec<(usize, usize)>>,
+        oilfields: Vec<(usize, Vec<(usize, usize)>)>,
     ) -> Self {
         Self {
             timer,
