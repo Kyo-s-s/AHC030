@@ -64,7 +64,7 @@ impl<R: BufRead> IO<R> {
         res
     }
 
-    pub fn predict(&mut self, s: Vec<(usize, usize)>) -> f64 {
+    pub fn predict(&mut self, s: &Vec<(usize, usize)>) -> f64 {
         let d = s.len();
         self.cost += 1.0 / (d as f64).sqrt();
         self.query_cnt += 1;

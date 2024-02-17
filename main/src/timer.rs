@@ -1,5 +1,5 @@
 // --- bandle on ---
-use crate::DEBUG;
+use crate::{DEBUG, LOCAL};
 // --- bandle off ---
 
 use std::time::SystemTime;
@@ -23,4 +23,10 @@ impl Timer {
     }
 }
 
-pub const TL: f64 = if DEBUG { 360.0 } else { 2.8 };
+pub const TL: f64 = if DEBUG {
+    360.0
+} else if LOCAL {
+    6.0
+} else {
+    2.8
+};

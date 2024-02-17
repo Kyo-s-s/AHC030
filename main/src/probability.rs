@@ -1,5 +1,5 @@
 // --- bandle on ---
-use crate::IO;
+use crate::{random::Random, IO};
 // --- bandle off ---
 
 pub struct Probability {
@@ -64,15 +64,15 @@ impl Probability {
                 ]
             })
             .collect::<Vec<_>>();
-        let mut excavate_history = self.excavate_history.clone();
-        excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
-        for ((x, y), v) in excavate_history {
-            self.update_excavate((x, y), v);
-        }
         let mut predict_history = self.predict_history.clone();
         predict_history.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         for (s, v) in predict_history {
             self.update_predict(&s, v);
+        }
+        let mut excavate_history = self.excavate_history.clone();
+        excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
+        for ((x, y), v) in excavate_history {
+            self.update_excavate((x, y), v);
         }
     }
 
@@ -132,7 +132,7 @@ impl Probability {
 
         io.debug(true, &format!("ac_per: {}", ac_per));
 
-        if ac_per > (0.5_f64).powf(self.m as f64) {
+        if ac_per > (0.7_f64).powf(self.m as f64) {
             let mut r = vec![vec![0; self.n]; self.n];
             for (i, (_, (dx, dy))) in positions.iter().enumerate() {
                 for (x, y) in &self.oilfields[i] {
@@ -140,14 +140,25 @@ impl Probability {
                 }
             }
             // excavate_history check
-            if self
+            let invalid_pos = self
                 .excavate_history
                 .iter()
-                .any(|((x, y), v)| r[*x][*y] != *v)
-            {
-                io.debug(true, "excavate_history check failed");
-                // self.update_submit_failed();
-                self.reset();
+                .filter(|((x, y), v)| r[*x][*y] != *v)
+                .map(|((x, y), v)| ((*x, *y), *v))
+                .collect::<Vec<_>>();
+
+            // こういうことをするとダブりで困りそうではある
+            if !invalid_pos.is_empty() {
+                for &((x, y), v) in &invalid_pos {
+                    io.debug(
+                        true,
+                        &format!(
+                            "excavate_history check failed, x: {}, y: {}, v: {}, r: {}",
+                            x, y, v, r[x][y]
+                        ),
+                    );
+                    self.update_excavate((x, y), v)
+                }
                 return None;
             }
             Some(
@@ -254,8 +265,8 @@ impl Probability {
                                 .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                         })
                         .count();
-                    // s で割るのやばそう　全部 s で割ってるので、やらないで後で正規化パートに回してもよさそう
-                    let u = (s - (0..dub).map(|dub| per[dub]).sum::<f64>()) / s;
+                    // 全部 s で割ってるので、やらないで後で正規化パートに任せる
+                    let u = s - (0..dub).map(|dub| per[dub]).sum::<f64>();
                     *p *= u;
                 }
             }

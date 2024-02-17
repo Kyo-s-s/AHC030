@@ -5,7 +5,7 @@ use rand::{seq::SliceRandom, Rng};
 pub struct Random {}
 
 impl Random {
-    pub fn _get_f() -> f64 {
+    pub fn get_f() -> f64 {
         rand::thread_rng().gen_range(0.0..1.0)
     }
 

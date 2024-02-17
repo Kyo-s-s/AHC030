@@ -44,6 +44,12 @@ impl<R: BufRead> Solver<R> {
         v
     }
 
+    fn predict(&mut self, set: &Vec<(usize, usize)>) -> f64 {
+        let v = self.io.predict(&set);
+        self.probability.update_predict(&set, v);
+        v
+    }
+
     fn submit(&mut self, ans: Vec<(usize, usize)>) {
         self.io.submit(ans);
     }
@@ -94,14 +100,14 @@ impl<R: BufRead> Solver<R> {
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
         None
-        // // このままだとTLまでずっとこれをやってしまう
+        // このままだとTLまでずっとこれをやってしまう
         // let mut less = (0..self.n)
         //     .flat_map(|i| (0..self.n).map(move |j| (i, j)))
         //     .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
         //     .collect::<Vec<_>>();
 
         // Random::shuffle(&mut less);
-        // let k = Random::get(20..41);
+        // let k = Random::get(10..21);
         // if less.len() < k {
         //     None
         // } else {
@@ -121,9 +127,53 @@ impl<R: BufRead> Solver<R> {
         }
     }
 
+    // TODO: self.e によってもかえる
+    fn divide(&self) -> Vec<usize> {
+        match self.n {
+            10 => vec![3, 3, 4],
+            11 => vec![3, 4, 4],
+            12 => vec![4, 4, 4],
+            13 => vec![4, 4, 5],
+            14 => vec![4, 5, 5],
+            15 => vec![5, 5, 5],
+            16 => vec![4, 4, 4, 4],
+            17 => vec![4, 4, 4, 5],
+            18 => vec![4, 4, 5, 5],
+            19 => vec![4, 5, 5, 5],
+            20 => vec![5, 5, 5, 5],
+            _ => unreachable!(),
+        }
+    }
+
+    fn preprocess_predict(&self) -> Vec<Vec<(usize, usize)>> {
+        let div = self.divide();
+        let mut ret = vec![];
+        let mut x = 0;
+        for &dx in &div {
+            let mut y = 0;
+            for &dy in &div {
+                let mut set = vec![];
+                for i in x..x + dx {
+                    for j in y..y + dy {
+                        set.push((i, j));
+                    }
+                }
+                ret.push(set);
+                y += dy;
+            }
+            x += dx;
+        }
+        ret
+    }
+
     pub fn solve(&mut self) {
         self.print_expected();
         let mut is_excavated = vec![vec![false; self.n]; self.n];
+
+        for set in self.preprocess_predict() {
+            self.predict(&set);
+            self.print_expected();
+        }
 
         while self.timer.get_time() < TL {
             let query = self.next_query(&is_excavated);
@@ -136,7 +186,7 @@ impl<R: BufRead> Solver<R> {
                     }
                 }
                 Query::Predict(set) => {
-                    self.io.predict(set);
+                    self.predict(&set);
                 }
             }
             if let Some(ans) = self.probability.solved_check(&self.io) {
