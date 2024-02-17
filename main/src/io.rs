@@ -109,7 +109,7 @@ impl<R: BufRead> IO<R> {
         let mut lines = vec![];
         if v < 1.0 {
             let v = ((v * 255.0) as usize).min(255);
-            lines.push(format!("#c {} {} #ff{:02x}{:02x}", x, y, 255 - v, 255 - v));
+            lines.push(format!("#c {} {} #{:02x}ff{:02x}", x, y, 255 - v, 255 - v));
         } else {
             lines.push(format!("#c {} {} #ff00ff", x, y));
         }

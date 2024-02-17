@@ -121,22 +121,37 @@ min: (0.02040816326530612, '0432')
 - 初期状態だと、$P(i, dx, dy) = \frac{1}{|X||Y|}$ みたいな値になる
 
 これをベイズ更新することを考える。
-クエリ結果を $q$ とすると、
 
-$$
-P(i, dx, dy) \gets P(i, dx, dy | q) = \frac{P(i, dx, dy) P(q | i, dx, dy)}{P(q)}
-$$
+- 掘るクエリ
+  クエリ結果を $q$ とすると、
 
-で更新する。
-ここで、尤度 $P(q | i, dx, dy)$ は、「ピース $i$ を $(dx, dy)$ に配置したときにクエリ結果 $q$ が返ってくる確率」である。
+  $$
+  P(i, dx, dy) \gets P(i, dx, dy | q) = \frac{P(i, dx, dy) P(q | i, dx, dy)}{P(q)}
+  $$
 
-$P(q)$ を求めるのは面倒だが、更新後に \sum_{dx \in X, dy \in Y} P(i, dx, dy) = 1$ になるように丸めれば良いため、問題にならない。
+  で更新する。
+  ここで、尤度 $P(q | i, dx, dy)$ は、「ピース $i$ を $(dx, dy)$ に配置したときにクエリ結果 $q$ が返ってくる確率」である。
 
-以降、
-$$
-P(i, dx, dy) \gets P(i, dx, dy | q) = P(i, dx, dy) P(q | i, dx, dy)
-$$
-で更新したのち、正規化する。
+  $P(q)$ を求めるのは面倒だが、更新後に \sum_{dx \in X, dy \in Y} P(i, dx, dy) = 1$ になるように丸めれば良いため、問題にならない。
+
+  以降、
+  $$
+  P(i, dx, dy) \gets P(i, dx, dy | q) = P(i, dx, dy) P(q | i, dx, dy)
+  $$
+  で更新したのち、正規化する。
+
+- 占いクエリ
+  $s = \sum_{v = 0, 1, \ldots} \mathrm{normpdf}(\mu, \sigma, v)$ とする。
+  合計が $v$ である確率は、 $\frac{\mathrm{normpdf(\mu, \sigma, v)}}{s}$ みたいな気がする。
+  厳密に更新しようとするとまずそう？　
+  $0$ のやつについて占いをする前提... として、 $(1 - \frac{\mathrm{normpdf(\mu, \sigma, 0)}}{s})^x$ ここで、 $x$ はダブってる数
+  を掛けたのち、正規化する... みたいな 
+
+- 今まで壊れていた15, 19
+  - 同じ形のピースが存在する！！！！！！！ だからsubmit一生されない
+  - これ激ヤバですね　なるほど　同じ形があると壊れます
+  - 今まで `oilfields: Vec<Vec<(usize, usize)>>` で管理していたが、
+    `oilfields: Vec<(usize, Vec<(usize, usize)>)>` に変更する 一つ目がcount
 
 
 例:
@@ -263,6 +278,7 @@ $$
     - $P(2, 1, 0) = \frac37$
     - $P(2, 2, 0) = \frac37$
   
+
 
 
 

@@ -2,8 +2,6 @@
 use crate::IO;
 // --- bandle off ---
 
-use rand::seq::SliceRandom;
-
 pub struct Probability {
     n: usize,
     m: usize,
@@ -48,7 +46,6 @@ impl Probability {
             })
             .collect::<Vec<_>>();
         let mut excavate_history = self.excavate_history.clone();
-        // excavate_history.shuffle(&mut rand::thread_rng());
         excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
         for ((x, y), v) in excavate_history {
             self.update_excavate((x, y), v);
@@ -114,6 +111,7 @@ impl Probability {
                 .iter()
                 .any(|((x, y), v)| r[*x][*y] != *v)
             {
+                io.debug(true, "excavate_history check failed");
                 // self.update_submit_failed();
                 self.reset();
                 return None;
@@ -200,7 +198,7 @@ impl Probability {
 
     pub fn update_predict(&mut self, set: &Vec<(usize, usize)>, v: f64) {
         let k = set.len() as f64;
-        let per = (0..(2 * set.len()))
+        let per = (0..(3 * set.len()))
             .map(|vs| {
                 let mu = (k - vs as f64) * self.e + vs as f64 * (1. - self.e);
                 let sig2 = k * self.e * (1. - self.e);
@@ -213,6 +211,7 @@ impl Probability {
         for (i, p) in self.p.iter_mut().enumerate() {
             for (dx, p) in p.iter_mut().enumerate() {
                 for (dy, p) in p.iter_mut().enumerate() {
+                    // P(i, dx, dy) が正当である確率 -> (i, dx, dy) でset上に置かれる個数以上になる確率
                     let dub = set
                         .iter()
                         .filter(|&&(x, y)| {
@@ -221,7 +220,8 @@ impl Probability {
                                 .any(|&(ox, oy)| x == ox + dx && y == oy + dy)
                         })
                         .count();
-                    let u = (1. - (per[0] / s)).powf(dub as f64);
+                    // s で割るのやばそう　全部 s で割ってるので、やらないで後で正規化パートに回してもよさそう
+                    let u = (s - (0..dub).map(|dub| per[dub]).sum::<f64>()) / s;
                     *p *= u;
                 }
             }

@@ -6,6 +6,9 @@ pub const DEBUG: bool = false;
 mod timer;
 use timer::*;
 
+// path: random.rs
+mod random;
+
 // path: io.rs
 mod io;
 use io::*;

@@ -1,6 +1,5 @@
 // --- bandle on ---
-use crate::{io::*, probability::Probability, Timer, DEBUG, TL};
-use rand::seq::SliceRandom;
+use crate::{io::*, probability::Probability, random::Random, Timer, DEBUG, TL};
 use std::io::BufRead;
 // --- bandle off ---
 
@@ -52,11 +51,18 @@ impl<R: BufRead> Solver<R> {
     }
 
     fn next_query(&self, is_excavated: &[Vec<bool>]) -> Query {
-        if let Some(pair) =
-            self.next_excavate_good_pos(is_excavated, &self.probability.expected_value())
-        {
+        let p = self.probability.expected_value();
+        // 期待値 0.25 < p < 0.75 のセルから、 0.5に一番近い掘っていないものを選ぶ
+        if let Some(pair) = self.next_excavate_good_pos(is_excavated, &p) {
             return Query::Excavate(pair);
         }
+
+        // Predict
+        if let Some(set) = self.next_predict(is_excavated, &p) {
+            return Query::Predict(set);
+        }
+
+        // まだ掘っていないセルからランダムに選ぶ
         Query::Excavate(self.next_random_pos(is_excavated))
     }
 
@@ -70,7 +76,8 @@ impl<R: BufRead> Solver<R> {
             .map(|(x, y)| (p[x][y], (x, y)))
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
-            .filter(|&(p, _)| 0.01 < p && p < 0.99)
+            // ここの制約を厳しくして、Predictへ誘導？
+            .filter(|&(p, _)| 0.01 < p && p < 0.99) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
                 let a = (a.0 - 0.5).abs();
                 let b = (b.0 - 0.5).abs();
@@ -83,12 +90,37 @@ impl<R: BufRead> Solver<R> {
         }
     }
 
+    fn next_predict(
+        &self,
+        is_excavated: &[Vec<bool>],
+        p: &[Vec<f64>],
+    ) -> Option<Vec<(usize, usize)>> {
+        None
+        // // このままだとTLまでずっとこれをやってしまう
+        // let mut less = (0..self.n)
+        //     .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+        //     .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
+        //     .collect::<Vec<_>>();
+
+        // Random::shuffle(&mut less);
+        // let k = Random::get(20..41);
+        // if less.len() < k {
+        //     None
+        // } else {
+        //     Some(less.into_iter().take(k).collect())
+        // }
+    }
+
     fn next_random_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
         let points = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
             .filter(|&(x, y)| !is_excavated[x][y])
             .collect::<Vec<_>>();
-        *points.choose(&mut rand::thread_rng()).unwrap_or(&(0, 0))
+        if points.is_empty() {
+            (0, 0)
+        } else {
+            *Random::get_item(&points)
+        }
     }
 
     pub fn solve(&mut self) {
@@ -109,9 +141,11 @@ impl<R: BufRead> Solver<R> {
                     self.io.predict(set);
                 }
             }
-
             if let Some(ans) = self.probability.solved_check(&self.io) {
                 self.submit(ans);
+            }
+            if is_excavated.iter().flatten().all(|&b| b) {
+                break;
             }
         }
 
