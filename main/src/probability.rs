@@ -7,6 +7,7 @@ pub struct Probability {
     m: usize,
     e: f64,
     oilfields: Vec<Vec<(usize, usize)>>,
+    oilfields_count: Vec<(usize, usize)>, // idx, sum
     pub p: Vec<Vec<Vec<f64>>>,
     excavate_history: Vec<((usize, usize), usize)>,
     predict_history: Vec<(Vec<(usize, usize)>, f64)>,
@@ -22,11 +23,29 @@ impl Probability {
                 vec![vec![1.0 / ((n - mx) as f64 * (n - my) as f64); n - my]; n - mx]
             })
             .collect::<Vec<_>>();
+
+        let oilfields_count = (0..m)
+            .map(|i| {
+                let mut idx = 1;
+                let mut cnt = 1;
+                for j in 0..m {
+                    if oilfields[i] == oilfields[j] {
+                        if j < i {
+                            idx += 1;
+                        }
+                        cnt += 1;
+                    }
+                }
+                (idx, cnt)
+            })
+            .collect::<Vec<_>>();
+
         Self {
             n,
             m,
             e,
             oilfields: oilfields.clone(),
+            oilfields_count,
             p,
             excavate_history: vec![],
             predict_history: vec![],
@@ -74,34 +93,37 @@ impl Probability {
             return None;
         }
 
-        let ac_per = self
+        // max_by 使うんじゃなく、ピース i の位置 (dx, dy) を前処理で求めるべき
+        // 同じピース同士はdx, dy の**filter**ではずせばよろしい
+        // よしなに個数を掛ければよい？
+        let positions = self
             .p
             .iter()
-            .map(|p| {
-                p.iter()
-                    .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
-                    .collect::<Vec<_>>()
+            .enumerate()
+            .map(|(i, p)| {
+                let mut s = vec![];
+                for (dx, p) in p.iter().enumerate() {
+                    for (dy, p) in p.iter().enumerate() {
+                        let per = (p * self.oilfields_count[i].1 as f64).min(1.);
+                        s.push((per, (dx, dy)));
+                    }
+                }
+                s.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+                s[self.oilfields_count[i].0 - 1]
             })
-            .map(|p| *p.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+            .collect::<Vec<_>>();
+
+        let ac_per = positions
+            .iter()
+            .map(|(per, _)| *per)
             .fold(1.0, |acc, x| acc * x);
 
         io.debug(true, &format!("ac_per: {}", ac_per));
 
         if ac_per > (0.5_f64).powf(self.m as f64) {
             let mut r = vec![vec![0; self.n]; self.n];
-            for (i, p) in self.p.iter().enumerate() {
-                let (dx, (dy, _)) = p
-                    .iter()
-                    .map(|p| {
-                        p.iter()
-                            .enumerate()
-                            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                            .unwrap()
-                    })
-                    .enumerate()
-                    .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
-                    .unwrap();
-                for &(x, y) in &self.oilfields[i] {
+            for (i, (_, (dx, dy))) in positions.iter().enumerate() {
+                for (x, y) in &self.oilfields[i] {
                     r[x + dx][y + dy] += 1;
                 }
             }
