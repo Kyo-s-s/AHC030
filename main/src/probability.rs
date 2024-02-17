@@ -101,15 +101,27 @@ impl Probability {
             .iter()
             .enumerate()
             .map(|(i, p)| {
-                let mut s = vec![];
-                for (dx, p) in p.iter().enumerate() {
-                    for (dy, p) in p.iter().enumerate() {
-                        let per = (p * self.oilfields_count[i].1 as f64).min(1.);
-                        s.push((per, (dx, dy)));
+                if self.oilfields_count[i].1 == 1 {
+                    let mut ma = (f64::MIN, (0, 0));
+                    for (dx, p) in p.iter().enumerate() {
+                        for (dy, p) in p.iter().enumerate() {
+                            if ma.0 < *p {
+                                ma = (*p, (dx, dy));
+                            }
+                        }
                     }
+                    ma
+                } else {
+                    let mut s = vec![];
+                    for (dx, p) in p.iter().enumerate() {
+                        for (dy, p) in p.iter().enumerate() {
+                            let per = (p * self.oilfields_count[i].1 as f64).min(1.);
+                            s.push((per, (dx, dy)));
+                        }
+                    }
+                    s.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+                    s[self.oilfields_count[i].0 - 1]
                 }
-                s.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-                s[self.oilfields_count[i].0 - 1]
             })
             .collect::<Vec<_>>();
 
