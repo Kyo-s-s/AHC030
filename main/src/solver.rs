@@ -46,8 +46,6 @@ impl<R: BufRead> Solver<R> {
 
     fn submit(&mut self, ans: Vec<(usize, usize)>) {
         self.io.submit(ans);
-        // submit falled
-        self.probability.update_submit_failed();
     }
 
     fn next_query(&self, is_excavated: &[Vec<bool>]) -> Query {

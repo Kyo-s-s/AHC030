@@ -229,24 +229,6 @@ impl Probability {
         self.normalize();
     }
 
-    pub fn update_submit_failed(&mut self) {
-        for p in self.p.iter_mut() {
-            let (dx, (dy, _)) = p
-                .iter()
-                .map(|p| {
-                    p.iter()
-                        .enumerate()
-                        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                        .unwrap()
-                })
-                .enumerate()
-                .max_by(|(_, a), (_, b)| a.1.partial_cmp(b.1).unwrap())
-                .unwrap();
-            p[dx][dy] *= 0.05; // 失敗したので確率を落とす 100%これなら正規化で元に戻るので問題なし
-        }
-        self.normalize();
-    }
-
     // 正規化 各ピース i について、p[i] の合計が 1 になるようにする
     fn normalize(&mut self) {
         for i in 0..self.m {
