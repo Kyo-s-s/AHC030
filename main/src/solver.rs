@@ -81,9 +81,9 @@ impl<R: BufRead> Solver<R> {
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
             // ここの制約を厳しくして、Predictへ誘導？
-            .filter(|&(p, _)| 0.05 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            .filter(|&(p, _)| 0.02 < p && p < 1.) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
-                let f = |x: f64| (x - 0.5).abs();
+                let f = |x: f64| (x - 0.65).abs();
                 let a = f(a.0);
                 let b = f(b.0);
                 a.partial_cmp(&b).unwrap()
@@ -101,7 +101,7 @@ impl<R: BufRead> Solver<R> {
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
         // このままだとTLまでずっとこれをやってしまう
-        if Random::get_f() < 0.75 {
+        if Random::get_f() < 0.5 {
             return None;
         }
         let less = (0..self.n)
