@@ -81,7 +81,7 @@ impl<R: BufRead> Solver<R> {
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
             // ここの制約を厳しくして、Predictへ誘導？
-            .filter(|&(p, _)| 0.05 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            .filter(|&(p, _)| 0.15 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
                 let f = |x: f64| (x - 0.5).abs();
                 let a = f(a.0);
@@ -101,12 +101,24 @@ impl<R: BufRead> Solver<R> {
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
         // このままだとTLまでずっとこれをやってしまう
-        if Random::get_f() < 0.5 {
+        if Random::get_f() < 0.7 {
             return None;
         }
-        let mut less = (0..self.n)
+        let less = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
             .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
+            .collect::<Vec<_>>();
+
+        if less.is_empty() {
+            return None;
+        }
+
+        let center = *Random::get_item(&less);
+        let mut less = less
+            .into_iter()
+            .filter(|&(x, y)| {
+                (x as i64 - center.0 as i64).abs() + (y as i64 - center.1 as i64).abs() < 5
+            })
             .collect::<Vec<_>>();
 
         Random::shuffle(&mut less);
