@@ -159,7 +159,7 @@ impl Probability {
                     );
                     self.update_excavate((x, y), v)
                 }
-                return None;
+                return self.submit_expected(io);
             }
             Some(
                 (0..self.n)
@@ -168,8 +168,29 @@ impl Probability {
                     .collect::<Vec<_>>(),
             )
         } else {
-            None
+            self.submit_expected(io)
         }
+    }
+
+    fn submit_expected<R: std::io::BufRead>(&mut self, io: &IO<R>) -> Option<Vec<(usize, usize)>> {
+        if io.query_cnt > self.n * self.n && Random::get_f() < 0.2 {
+            let p = self.expected_value();
+            let set = (0..self.n)
+                .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+                .filter(|&(i, j)| p[i][j] > 0.1)
+                .collect::<Vec<_>>();
+
+            if self.excavate_history.iter().all(|((x, y), v)| {
+                if *v > 0 {
+                    set.contains(&(*x, *y))
+                } else {
+                    !set.contains(&(*x, *y))
+                }
+            }) {
+                return Some(set);
+            }
+        }
+        None
     }
 
     pub fn update_excavate(&mut self, (x, y): (usize, usize), v: usize) {
@@ -235,10 +256,24 @@ impl Probability {
         self.normalize();
     }
 
-    fn normal_distribution(mu: f64, sig2: f64, x: f64) -> f64 {
-        let a = 1. / (2. * std::f64::consts::PI * sig2).sqrt();
-        let b = (x - mu).powi(2) / (2. * sig2);
-        a * (-b).exp()
+    fn normal_distribution(mu: f64, sig2: f64) -> impl Fn(f64) -> f64 {
+        move |x: f64| {
+            let a = 1. / (2. * std::f64::consts::PI * sig2).sqrt();
+            let b = (x - mu).powi(2) / (2. * sig2);
+            a * (-b).exp()
+        }
+    }
+
+    fn integrate(f: impl Fn(f64) -> f64, a: f64, b: f64) -> f64 {
+        let n = 10;
+        let h = (b - a) / n as f64;
+        let s = (0..n)
+            .map(|i| {
+                let x = a + h * i as f64;
+                f(x) + 4. * f(x + h / 2.) + f(x + h)
+            })
+            .sum::<f64>();
+        (h / 6.) * s
     }
 
     pub fn update_predict(&mut self, set: &Vec<(usize, usize)>, v: f64) {
@@ -247,7 +282,12 @@ impl Probability {
             .map(|vs| {
                 let mu = (k - vs as f64) * self.e + vs as f64 * (1. - self.e);
                 let sig2 = k * self.e * (1. - self.e);
-                Probability::normal_distribution(mu, sig2, v)
+                // Probability::normal_distribution(mu, sig2)(v)
+                Probability::integrate(
+                    Probability::normal_distribution(mu, sig2),
+                    if v != 0. { v } else { -10.0 },
+                    v + 1.,
+                )
             })
             .collect::<Vec<_>>();
 

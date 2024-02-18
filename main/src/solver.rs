@@ -81,10 +81,11 @@ impl<R: BufRead> Solver<R> {
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
             // ここの制約を厳しくして、Predictへ誘導？
-            .filter(|&(p, _)| 0.01 < p && p < 0.99) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            .filter(|&(p, _)| 0.05 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
-                let a = (a.0 - 0.5).abs();
-                let b = (b.0 - 0.5).abs();
+                let f = |x: f64| (x - 0.5).abs();
+                let a = f(a.0);
+                let b = f(b.0);
                 a.partial_cmp(&b).unwrap()
             })
         {
@@ -99,20 +100,23 @@ impl<R: BufRead> Solver<R> {
         is_excavated: &[Vec<bool>],
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
-        None
         // このままだとTLまでずっとこれをやってしまう
-        // let mut less = (0..self.n)
-        //     .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-        //     .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
-        //     .collect::<Vec<_>>();
+        if Random::get_f() < 0.5 {
+            return None;
+        }
+        let mut less = (0..self.n)
+            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+            .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
+            .collect::<Vec<_>>();
 
-        // Random::shuffle(&mut less);
-        // let k = Random::get(10..21);
-        // if less.len() < k {
-        //     None
-        // } else {
-        //     Some(less.into_iter().take(k).collect())
-        // }
+        Random::shuffle(&mut less);
+        // なんか近くのをいい感じに選ぶとよさげ
+        let k = Random::get(10..21);
+        if less.len() < k {
+            None
+        } else {
+            Some(less.into_iter().take(k).collect())
+        }
     }
 
     fn next_random_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
@@ -129,19 +133,58 @@ impl<R: BufRead> Solver<R> {
 
     // TODO: self.e によってもかえる
     fn divide(&self) -> Vec<usize> {
-        match self.n {
-            10 => vec![3, 3, 4],
-            11 => vec![3, 4, 4],
-            12 => vec![4, 4, 4],
-            13 => vec![4, 4, 5],
-            14 => vec![4, 5, 5],
-            15 => vec![5, 5, 5],
-            16 => vec![4, 4, 4, 4],
-            17 => vec![4, 4, 4, 5],
-            18 => vec![4, 4, 5, 5],
-            19 => vec![4, 5, 5, 5],
-            20 => vec![5, 5, 5, 5],
-            _ => unreachable!(),
+        let oilfield_size_ave = self
+            .oilfields
+            .iter()
+            .map(|oilfield| oilfield.len())
+            .sum::<usize>() as f64
+            / self.m as f64;
+
+        if oilfield_size_ave < 6.0 {
+            match self.n {
+                10 => vec![2, 3, 2, 3],
+                11 => vec![3, 3, 3, 2],
+                12 => vec![3, 3, 3, 3],
+                13 => vec![3, 3, 4, 3],
+                14 => vec![3, 4, 4, 3],
+                15 => vec![3, 3, 3, 3, 3],
+                16 => vec![3, 3, 3, 4, 3],
+                17 => vec![3, 4, 3, 4, 3],
+                18 => vec![3, 3, 3, 3, 3, 3],
+                19 => vec![3, 3, 3, 3, 4, 3],
+                20 => vec![3, 4, 3, 3, 4, 3],
+                _ => unimplemented!("n = {}", self.n),
+            }
+        } else if oilfield_size_ave < 20.0 {
+            match self.n {
+                10 => vec![3, 3, 4],
+                11 => vec![3, 4, 4],
+                12 => vec![4, 4, 4],
+                13 => vec![4, 4, 5],
+                14 => vec![4, 5, 5],
+                15 => vec![5, 5, 5],
+                16 => vec![4, 4, 4, 4],
+                17 => vec![4, 4, 4, 5],
+                18 => vec![4, 4, 5, 5],
+                19 => vec![4, 5, 5, 5],
+                20 => vec![5, 5, 5, 5],
+                _ => unimplemented!("n = {}", self.n),
+            }
+        } else {
+            match self.n {
+                10 => vec![5, 5],
+                11 => vec![5, 6],
+                12 => vec![6, 6],
+                13 => vec![6, 7],
+                14 => vec![7, 7],
+                15 => vec![5, 5, 5],
+                16 => vec![5, 6, 5],
+                17 => vec![6, 5, 6],
+                18 => vec![6, 6, 6],
+                19 => vec![6, 7, 6],
+                20 => vec![7, 6, 7],
+                _ => unimplemented!("n = {}", self.n),
+            }
         }
     }
 
