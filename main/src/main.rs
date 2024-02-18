@@ -1,8 +1,8 @@
 // pub const DEBUG: bool = true;
 pub const DEBUG: bool = false;
 
-pub const LOCAL: bool = true;
-// pub const LOCAL: bool = false;
+// pub const LOCAL: bool = true;
+pub const LOCAL: bool = false;
 
 // --- bandle on ---
 // path: timer.rs
