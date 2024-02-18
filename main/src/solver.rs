@@ -45,8 +45,8 @@ impl<R: BufRead> Solver<R> {
     }
 
     fn predict(&mut self, set: &Vec<(usize, usize)>) -> f64 {
-        let v = self.io.predict(&set);
-        self.probability.update_predict(&set, v);
+        let v = self.io.predict(set);
+        self.probability.update_predict(set, v);
         v
     }
 
@@ -81,7 +81,7 @@ impl<R: BufRead> Solver<R> {
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
             // ここの制約を厳しくして、Predictへ誘導？
-            .filter(|&(p, _)| 0.15 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            .filter(|&(p, _)| 0.05 < p && p < 0.95) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
                 let f = |x: f64| (x - 0.5).abs();
                 let a = f(a.0);
@@ -101,7 +101,7 @@ impl<R: BufRead> Solver<R> {
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
         // このままだとTLまでずっとこれをやってしまう
-        if Random::get_f() < 0.7 {
+        if Random::get_f() < 0.75 {
             return None;
         }
         let less = (0..self.n)
@@ -116,18 +116,23 @@ impl<R: BufRead> Solver<R> {
         let center = *Random::get_item(&less);
         let mut less = less
             .into_iter()
-            .filter(|&(x, y)| {
-                (x as i64 - center.0 as i64).abs() + (y as i64 - center.1 as i64).abs() < 5
+            .map(|(x, y)| {
+                (
+                    (x as i64 - center.0 as i64).abs() + (y as i64 - center.1 as i64).abs(),
+                    (x, y),
+                )
             })
             .collect::<Vec<_>>();
 
-        Random::shuffle(&mut less);
+        less.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Random::shuffle(&mut less);
         // なんか近くのをいい感じに選ぶとよさげ
         let k = Random::get(10..21);
         if less.len() < k {
             None
         } else {
-            Some(less.into_iter().take(k).collect())
+            Some(less.into_iter().map(|(_, (x, y))| (x, y)).take(k).collect())
         }
     }
 
