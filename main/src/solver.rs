@@ -66,6 +66,11 @@ impl<R: BufRead> Solver<R> {
             return Query::Predict(set);
         }
 
+        // 上ですり抜けてるケースを補間
+        // if let Some(pair) = self.next_excavate_good_pos(is_excavated, &p) {
+        //     return Query::Excavate(pair);
+        // }
+
         // まだ掘っていないセルからランダムに選ぶ
         Query::Excavate(self.next_random_pos(is_excavated, &p))
     }
@@ -111,7 +116,7 @@ impl<R: BufRead> Solver<R> {
         }
         let less = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-            .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.6)
+            .filter(|&(x, y)| !is_excavated[x][y] && 0. < p[x][y] && p[x][y] < 0.2)
             .collect::<Vec<_>>();
 
         if less.is_empty() {
@@ -133,7 +138,7 @@ impl<R: BufRead> Solver<R> {
 
         // Random::shuffle(&mut less);
         // なんか近くのをいい感じに選ぶとよさげ
-        let k = Random::get(15..26);
+        let k = Random::get(11..21);
         if less.len() < k {
             None
         } else {

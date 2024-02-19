@@ -64,15 +64,15 @@ impl Probability {
                 ]
             })
             .collect::<Vec<_>>();
+        let mut excavate_history = self.excavate_history.clone();
+        excavate_history.sort_by(|a, b| b.1.cmp(&a.1));
+        for ((x, y), v) in excavate_history {
+            self.update_excavate((x, y), v);
+        }
         let mut predict_history = self.predict_history.clone();
         predict_history.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         for (s, v) in predict_history {
             self.update_predict(&s, v);
-        }
-        let mut excavate_history = self.excavate_history.clone();
-        excavate_history.sort_by(|a, b| a.1.cmp(&b.1));
-        for ((x, y), v) in excavate_history {
-            self.update_excavate((x, y), v);
         }
     }
 
@@ -339,10 +339,8 @@ impl Probability {
     fn normalize(&mut self) {
         for i in 0..self.m {
             let sum = self.p[i].iter().map(|v| v.iter().sum::<f64>()).sum::<f64>();
-            for dx in 0..(self.p[i].len()) {
-                for dy in 0..(self.p[i][dx].len()) {
-                    self.p[i][dx][dy] /= sum;
-                }
+            for p in self.p[i].iter_mut().flatten() {
+                *p /= sum;
             }
         }
     }
