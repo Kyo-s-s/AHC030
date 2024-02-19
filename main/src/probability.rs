@@ -83,18 +83,26 @@ impl Probability {
         })
     }
 
-    pub fn solved_check<R: std::io::BufRead>(&mut self, io: &IO<R>) -> Option<Vec<(usize, usize)>> {
+    pub fn all_excavate<R: std::io::BufRead>(&mut self, io: &IO<R>) -> Option<Vec<(usize, usize)>> {
         let a = self.excavate_history.iter().map(|(_, v)| v).sum::<usize>();
         let b = self.oilfields.iter().map(|v| v.len()).sum::<usize>();
 
         if a == b {
-            return Some(
+            Some(
                 self.excavate_history
                     .iter()
                     .filter(|(_, v)| *v > 0)
                     .map(|((x, y), _)| (*x, *y))
                     .collect(),
-            );
+            )
+        } else {
+            None
+        }
+    }
+
+    pub fn solved_check<R: std::io::BufRead>(&mut self, io: &IO<R>) -> Option<Vec<(usize, usize)>> {
+        if let Some(set) = self.all_excavate(io) {
+            return Some(set);
         }
 
         if self.invalid() {

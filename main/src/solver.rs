@@ -81,9 +81,11 @@ impl<R: BufRead> Solver<R> {
             .filter(|&(_, (x, y))| !is_excavated[x][y])
             // これなに？謎
             // ここの制約を厳しくして、Predictへ誘導？
-            .filter(|&(p, _)| 0.02 < p && p < 1.) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            // .filter(|&(p, _)| 0.02 < p && p < 1.) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            // .filter(|&(p, _)| 0.05 < p && p < 1.) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
+            .filter(|&(p, _)| 0.1 < p && p < 1.) // こっちのほうがスコアは良い(それはそう、出ちゃうとRandomなので)
             .min_by(|a, b| {
-                let f = |x: f64| (x - 0.65).abs();
+                let f = |x: f64| (x - 0.6).abs();
                 let a = f(a.0);
                 let b = f(b.0);
                 a.partial_cmp(&b).unwrap()
@@ -284,19 +286,47 @@ impl<R: BufRead> Solver<R> {
     }
 
     fn honesty(&mut self) {
-        let mut island = vec![vec![false; self.n]; self.n];
-        for (x, island) in island.iter_mut().enumerate() {
-            for (y, island) in island.iter_mut().enumerate() {
-                *island = self.excavate((x, y)) > 0;
-                self.io.debug(DEBUG, "honesty");
+        let p = self.probability.expected_value();
+        let mut pos = (0..self.n)
+            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+            .map(|(x, y)| {
+                (
+                    if p[x][y].is_infinite() || p[x][y].is_nan() {
+                        1.
+                    } else {
+                        p[x][y]
+                    },
+                    (x, y),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        pos.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+
+        for (_, (x, y)) in pos.iter() {
+            self.excavate((*x, *y));
+            if let Some(ans) = self.probability.all_excavate(&self.io) {
+                self.io.submit(ans);
             }
         }
 
-        let ans = (0..self.n)
-            .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-            .filter(|&(i, j)| island[i][j])
-            .collect::<Vec<_>>();
+        // let mut island = vec![vec![false; self.n]; self.n];
+        // for (x, island) in island.iter_mut().enumerate() {
+        //     for (y, island) in island.iter_mut().enumerate() {
+        //         *island = self.excavate((x, y)) > 0;
+        //         self.io.debug(DEBUG, "honesty");
 
-        self.io.submit(ans);
+        //         if let Some(ans) = self.probability.all_excavate(&self.io) {
+        //             self.io.submit(ans);
+        //         }
+        //     }
+        // }
+
+        // let ans = (0..self.n)
+        //     .flat_map(|i| (0..self.n).map(move |j| (i, j)))
+        //     .filter(|&(i, j)| island[i][j])
+        //     .collect::<Vec<_>>();
+
+        // self.io.submit(ans);
     }
 }
