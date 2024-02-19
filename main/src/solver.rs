@@ -111,7 +111,7 @@ impl<R: BufRead> Solver<R> {
         }
         let less = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
-            .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.25)
+            .filter(|&(x, y)| !is_excavated[x][y] && p[x][y] < 0.6)
             .collect::<Vec<_>>();
 
         if less.is_empty() {
@@ -185,7 +185,7 @@ impl<R: BufRead> Solver<R> {
                 20 => vec![3, 4, 3, 3, 4, 3],
                 _ => unimplemented!("n = {}", self.n),
             }
-        } else if oilfield_size_ave < 25.0 {
+        } else if oilfield_size_ave < 30.0 {
             match self.n {
                 10 => vec![3, 3, 4],
                 11 => vec![3, 4, 4],
