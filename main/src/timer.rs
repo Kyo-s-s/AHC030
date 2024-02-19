@@ -26,7 +26,7 @@ impl Timer {
 pub const TL: f64 = if DEBUG {
     360.0
 } else if LOCAL {
-    6.0
+    60.0
 } else {
     2.8
 };

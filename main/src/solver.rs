@@ -67,7 +67,7 @@ impl<R: BufRead> Solver<R> {
         }
 
         // まだ掘っていないセルからランダムに選ぶ
-        Query::Excavate(self.next_random_pos(is_excavated))
+        Query::Excavate(self.next_random_pos(is_excavated, &p))
     }
 
     fn next_excavate_good_pos(
@@ -100,6 +100,9 @@ impl<R: BufRead> Solver<R> {
         is_excavated: &[Vec<bool>],
         p: &[Vec<f64>],
     ) -> Option<Vec<(usize, usize)>> {
+        if self.io.query_cnt > self.n * self.n * 2 / 3 {
+            return None;
+        }
         // このままだとTLまでずっとこれをやってしまう
         if Random::get_f() < 0.5 {
             return None;
@@ -128,7 +131,7 @@ impl<R: BufRead> Solver<R> {
 
         // Random::shuffle(&mut less);
         // なんか近くのをいい感じに選ぶとよさげ
-        let k = Random::get(10..21);
+        let k = Random::get(15..26);
         if less.len() < k {
             None
         } else {
@@ -136,15 +139,23 @@ impl<R: BufRead> Solver<R> {
         }
     }
 
-    fn next_random_pos(&self, is_excavated: &[Vec<bool>]) -> (usize, usize) {
+    fn next_random_pos(&self, is_excavated: &[Vec<bool>], p: &[Vec<f64>]) -> (usize, usize) {
         let points = (0..self.n)
             .flat_map(|i| (0..self.n).map(move |j| (i, j)))
             .filter(|&(x, y)| !is_excavated[x][y])
+            .filter(|&(x, y)| 0. < p[x][y] && p[x][y] < 10000.0)
+            .map(|(x, y)| (p[x][y], (x, y)))
             .collect::<Vec<_>>();
+
         if points.is_empty() {
             (0, 0)
         } else {
-            *Random::get_item(&points)
+            // *Random::get_item(&points)
+            points
+                .iter()
+                .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                .unwrap()
+                .1
         }
     }
 
@@ -172,7 +183,7 @@ impl<R: BufRead> Solver<R> {
                 20 => vec![3, 4, 3, 3, 4, 3],
                 _ => unimplemented!("n = {}", self.n),
             }
-        } else if oilfield_size_ave < 20.0 {
+        } else if oilfield_size_ave < 25.0 {
             match self.n {
                 10 => vec![3, 3, 4],
                 11 => vec![3, 4, 4],
